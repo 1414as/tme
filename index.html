@@ -74,7 +74,7 @@ body {
 }
 .theme-toggle:hover { background: rgba(255,255,255,0.3); }
 
-.container { max-width: 1400px; margin: 20px auto; padding: 0 16px; }
+.container { max-width: 1550px; margin: 20px auto; padding: 0 16px; }
 
 .filters-card {
   background: var(--card-bg); border: 1px solid var(--border-color);
@@ -82,7 +82,7 @@ body {
 }
 .filters-card h3 { font-size: 1.1rem; margin-bottom: 12px; color: var(--text-main); font-family: 'B Nazanin'; }
 .filters-grid {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px;
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px;
 }
 .filter-group { display: flex; flex-direction: column; gap: 6px; }
 .filter-group label { font-size: 0.85rem; font-weight: bold; color: var(--text-muted); font-family: 'B Nazanin'; }
@@ -91,7 +91,7 @@ body {
   background-color: var(--card-bg); color: var(--text-main); font-family: 'Times New Roman', 'B Nazanin';
 }
 
-/* استایل جدید چک‌باکس‌های روزانه با مربع و تیک آبی */
+/* فیلتر چک‌باکس روزانه با مربع و تیک آبی */
 .checkbox-container {
   border: 1px solid var(--border-color);
   border-radius: 6px;
@@ -153,9 +153,9 @@ body {
   background: var(--card-bg); border: 1px solid var(--border-color);
   border-radius: 12px; padding: 20px; box-shadow: var(--shadow); overflow-x: auto;
 }
-.data-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-.data-table th { background: var(--table-header); color: #fff; padding: 10px; text-align: right; font-family: 'B Nazanin'; }
-.data-table td { padding: 8px; border-bottom: 1px solid var(--border-color); }
+.data-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; white-space: nowrap; }
+.data-table th { background: var(--table-header); color: #fff; padding: 9px 6px; text-align: right; font-family: 'B Nazanin'; }
+.data-table td { padding: 7px 6px; border-bottom: 1px solid var(--border-color); }
 .num-en { font-family: 'Times New Roman', monospace; direction: ltr; text-align: right; }
 </style>
 </head>
@@ -206,7 +206,6 @@ body {
     </div>
   </div>
 
-  <!-- نمودار تجمعی کل مصرف -->
   <div class="charts-grid">
     <div class="chart-card">
       <h4>📊 نمودار تجمعی روند کل میزان مصرف ابزار (تجمعی تک‌ماهه و چندماهه)</h4>
@@ -214,7 +213,6 @@ body {
     </div>
   </div>
 
-  <!-- نمودارهای تحلیلی گرافیکی و حرفه‌ای -->
   <div class="charts-grid-2">
     <div class="chart-card">
       <h4>📈 تحلیل انحراف از مصرف ابزار به تفکیک دستگاه‌ها</h4>
@@ -232,15 +230,24 @@ body {
       <thead>
         <tr>
           <th>تاریخ</th>
+          <th>کد همخوانی</th>
           <th>نام قطعه</th>
+          <th>کد انبار</th>
           <th>مشخصات ابزار مصرفی</th>
-          <th>نام خط / نام دستگاه</th>
-          <th>نام اپراتور</th>
+          <th>تعداد هلدر</th>
+          <th>ضریب مصرف</th>
+          <th>ضریب مصرف تعدادی</th>
           <th>مقدار برنامه تولید</th>
           <th>مقدار ابزار مورد نیاز</th>
-          <th>تعداد ابزار تحویلی</th>
-          <th>تعداد ابزار برگشتی</th>
-          <th>میزان انحراف از مصرف</th>
+          <th>تعداد ابزار تحویلی به اپراتور</th>
+          <th>تعداد ابزار برگشت شده به ابزارسازی</th>
+          <th>تعداد ابزار شکسته شده</th>
+          <th>تعداد ابزار بدهکاری اپراتور</th>
+          <th>زمان شیفت</th>
+          <th>نام اپراتور</th>
+          <th>نام سرشیفت</th>
+          <th>نام خط / نام دستگاه</th>
+          <th>میزان انحراف از مصرف ابزار</th>
         </tr>
       </thead>
       <tbody id="table-body"></tbody>
@@ -252,7 +259,6 @@ body {
 let rawData = [];
 let chartCumObj = null, chartDevObj = null, chartBrkObj = null;
 
-// فرمت‌بندی هوشمند: اعداد اعشاری تا ۵ رقم، اعداد صحیح بدون اعشار
 function formatVal(val, isDecimal = true) {
   const num = parseFloat(val);
   if (isNaN(num)) return isDecimal ? "0.00000" : "0";
@@ -375,7 +381,6 @@ function applyFilters() {
   renderTable(filtered);
 }
 
-// نمودار تجمعی با گرافیک و گرادیانت حرفه‌ای
 function renderChartCumulative(data) {
   const grouped = {};
   data.forEach(r => {
@@ -423,7 +428,6 @@ function renderChartCumulative(data) {
   });
 }
 
-// نمودار گرافیکی انحراف به تفکیک دستگاه
 function renderChartDeviations(data) {
   const grouped = {};
   data.forEach(r => {
@@ -459,7 +463,6 @@ function renderChartDeviations(data) {
   });
 }
 
-// نمودار گرافیکی شکسته شدن ابزار و بدهکاری اپراتور
 function renderChartBreakage(data) {
   const broken = {}, debt = {};
   data.forEach(r => {
@@ -500,14 +503,23 @@ function renderTable(data) {
     const devVal = parseFloat(r["میزان انحراف از مصرف ابزار"] || 0);
     tr.innerHTML = `
       <td class="num-en">${r["تاریخ"] || ''}</td>
+      <td class="num-en">${r["کد همخوانی"] || ''}</td>
       <td style="font-family: 'B Nazanin';">${r["نام قطعه"] || ''}</td>
+      <td class="num-en">${r["کد انبار"] || ''}</td>
       <td style="font-family: 'Times New Roman';">${r["مشخصات ابزار مصرفی"] || ''}</td>
-      <td style="font-family: 'B Nazanin';">${r["نام خط / نام دستگاه"] || ''}</td>
-      <td style="font-family: 'B Nazanin';">${r["نام اپراتور"] || ''}</td>
+      <td class="num-en">${formatVal(r["تعداد هلدر"], false)}</td>
+      <td class="num-en">${formatVal(r["ضریب مصرف"], true)}</td>
+      <td class="num-en">${formatVal(r["ضریب مصرف تعدادی"], true)}</td>
       <td class="num-en">${formatVal(r["مقدار برنامه تولید"], false)}</td>
       <td class="num-en">${formatVal(r["مقدار ابزار مورد نیاز"], true)}</td>
       <td class="num-en">${formatVal(r["تعداد ابزار تحویلی به اپراتور"], true)}</td>
       <td class="num-en">${formatVal(r["تعداد ابزار برگشت شده به ابزارسازی"], true)}</td>
+      <td class="num-en">${formatVal(r["تعداد ابزار شکسته شده"], true)}</td>
+      <td class="num-en">${formatVal(r["تعداد ابزار بدهکاری اپراتور"], true)}</td>
+      <td class="num-en">${r["زمان شیفت"] || ''}</td>
+      <td style="font-family: 'B Nazanin';">${r["نام اپراتور"] || ''}</td>
+      <td style="font-family: 'B Nazanin';">${r["نام سرشیفت"] || ''}</td>
+      <td style="font-family: 'B Nazanin';">${r["نام خط / نام دستگاه"] || ''}</td>
       <td class="num-en" style="color: ${devVal > 0 ? '#ef4444' : '#10b981'}; font-weight: bold;">${formatVal(devVal, true)}</td>
     `;
     tbody.appendChild(tr);
