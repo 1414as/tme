@@ -90,9 +90,9 @@ body {
   padding: 8px; border: 1px solid var(--border-color); border-radius: 6px;
   background-color: var(--card-bg); color: var(--text-main); font-family: 'Times New Roman', 'B Nazanin';
 }
-.filter-group select[multiple] { height: 80px; }
 
 .charts-grid { display: grid; grid-template-columns: 1fr; gap: 24px; margin-bottom: 24px; }
+.charts-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px; }
 
 .chart-card {
   background: var(--card-bg); border: 1px solid var(--border-color);
@@ -120,7 +120,7 @@ body {
   <img src="pn.webp" alt="لوگو پویانوین قطعه جی" class="header-logo">
   <div class="header-title">
     <h1>داشبورد مدیریت مصرف ابزار</h1>
-    <p>شرکت پویانوین قطعه جی — پایاذوب کاوه</p>
+    <p>شرکت پویانوین قطعه جی — مانیتورینگ خطوط دارای برنامه تولید</p>
   </div>
   <button class="theme-toggle" id="themeBtn">🌙 حالت شب / روز</button>
   <img src="ez.webp" alt="لوگو عظام" class="header-logo" style="margin-right: 12px;">
@@ -131,12 +131,12 @@ body {
     <h3>🔍 فیلترهای تعاملی و پویای داشبورد</h3>
     <div class="filters-grid">
       <div class="filter-group">
-        <label>فیلتر ماه (yyyy/mm)</label>
-        <select id="f-month" multiple></select>
+        <label>فیلتر ماهانه (مثلاً شهریور 1405)</label>
+        <select id="f-month" multiple size="3"></select>
       </div>
       <div class="filter-group">
-        <label>تاریخ روزانه (چندانتخابی)</label>
-        <select id="f-date" multiple></select>
+        <label>فیلتر روزانه (انتخابی چندتایی)</label>
+        <select id="f-date" multiple size="3"></select>
       </div>
       <div class="filter-group">
         <label>نام قطعه</label>
@@ -161,22 +161,28 @@ body {
     </div>
   </div>
 
+  <!-- نمودار تجمعی کل مصرف -->
   <div class="charts-grid">
     <div class="chart-card">
-      <h4>۱) نمودار میزان انحراف از مصرف ابزار بر اساس نوع قطعه و اپراتور</h4>
-      <div class="chart-container"><canvas id="chart1"></canvas></div>
+      <h4>📊 نمودار تجمعی روند کل میزان مصرف ابزار (تجمعی تک‌ماهه و چندماهه)</h4>
+      <div class="chart-container"><canvas id="chartCumulative"></canvas></div>
     </div>
   </div>
 
-  <div class="charts-grid">
+  <!-- نمودارهای تحلیلی پیشنهادی -->
+  <div class="charts-grid-2">
     <div class="chart-card">
-      <h4>۲) میزان انحراف از مصرف ابزار بر اساس خط/دستگاه (طیف پرمصرف به کم‌مصرف)</h4>
-      <div class="chart-container"><canvas id="chart2"></canvas></div>
+      <h4>📈 تحلیل انحراف از مصرف ابزار به تفکیک خطوط/دستگاه‌ها</h4>
+      <div class="chart-container"><canvas id="chartDeviations"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h4>🛠️ تحلیل نرخ شکسته شدن ابزار در برابر بدهکاری اپراتورها</h4>
+      <div class="chart-container"><canvas id="chartBreakage"></canvas></div>
     </div>
   </div>
 
   <div class="table-section">
-    <h4 style="margin-bottom: 12px; font-family: 'B Nazanin';">📋 ریز داده‌های پایش مصرف و انحراف ابزار</h4>
+    <h4 style="margin-bottom: 12px; font-family: 'B Nazanin';">📋 ریز داده‌های پایش خطوط فعال (با برنامه تولید غیرصفر)</h4>
     <table class="data-table">
       <thead>
         <tr>
@@ -187,9 +193,9 @@ body {
           <th>نام اپراتور</th>
           <th>مقدار برنامه تولید</th>
           <th>مقدار ابزار مورد نیاز</th>
-          <th>تعداد ابزار تحویلی به اپراتور</th>
-          <th>تعداد ابزار برگشت شده به ابزارسازی</th>
-          <th>میزان انحراف از مصرف ابزار</th>
+          <th>تعداد ابزار تحویلی</th>
+          <th>تعداد ابزار برگشتی</th>
+          <th>میزان انحراف از مصرف</th>
         </tr>
       </thead>
       <tbody id="table-body"></tbody>
@@ -199,7 +205,13 @@ body {
 
 <script>
 let rawData = [];
-let chart1Obj = null, chart2Obj = null;
+let chartCumObj = null, chartDevObj = null, chartBrkObj = null;
+
+// محاسبه فرمت دقیق ۵ رقم اعشار
+function format5(num) {
+  const val = parseFloat(num);
+  return isNaN(val) ? "0.00000" : val.toFixed(5);
+}
 
 document.getElementById('themeBtn').addEventListener('click', () => {
   const current = document.documentElement.getAttribute('data-theme');
@@ -211,7 +223,7 @@ document.getElementById('themeBtn').addEventListener('click', () => {
 function updateChartsTheme() {
   const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
   const textColor = isDark ? '#f8fafc' : '#0a192f';
-  [chart1Obj, chart2Obj].forEach(c => {
+  [chartCumObj, chartDevObj, chartBrkObj].forEach(c => {
     if (c) {
       c.options.scales.x.ticks.color = textColor;
       c.options.scales.y.ticks.color = textColor;
@@ -224,7 +236,9 @@ function updateChartsTheme() {
 async function initDashboard() {
   try {
     const res = await fetch('data.json?t=' + Date.now());
-    rawData = await res.json();
+    const data = await res.json();
+    // فیلتر کردن رکوردهایی که برنامه تولید آنها غیرصفر است
+    rawData = data.filter(r => parseFloat(r["مقدار برنامه تولید"]) > 0);
     setupFilters();
     applyFilters();
   } catch(e) {
@@ -233,7 +247,7 @@ async function initDashboard() {
 }
 
 function setupFilters() {
-  const months = [...new Set(rawData.map(r => r["تاریخ"] ? r["تاریخ"].substring(0, 7) : ''))].filter(Boolean).sort();
+  const months = [...new Set(rawData.map(r => r["عنوان ماه"]))].filter(Boolean).sort();
   const dates = [...new Set(rawData.map(r => r["تاریخ"]))].filter(Boolean).sort();
   const parts = [...new Set(rawData.map(r => r["نام قطعه"]))].filter(Boolean);
   const warehouses = [...new Set(rawData.map(r => r["کد انبار"]))].filter(Boolean);
@@ -277,7 +291,7 @@ function applyFilters() {
   const shift = document.getElementById('f-shift').value;
 
   const filtered = rawData.filter(r => {
-    if (selMonths.length && !selMonths.includes(r["تاریخ"].substring(0, 7))) return false;
+    if (selMonths.length && !selMonths.includes(r["عنوان ماه"])) return false;
     if (selDates.length && !selDates.includes(r["تاریخ"])) return false;
     if (part && r["نام قطعه"] !== part) return false;
     if (warehouse && String(r["کد انبار"]) !== warehouse) return false;
@@ -287,39 +301,53 @@ function applyFilters() {
     return true;
   });
 
-  renderChart1(filtered);
-  renderChart2(filtered);
+  renderChartCumulative(filtered);
+  renderChartDeviations(filtered);
+  renderChartBreakage(filtered);
   renderTable(filtered);
 }
 
-function renderChart1(data) {
+// نمودار تجمعی کل میزان مصرف (تک‌ماهه و چندماهه)
+function renderChartCumulative(data) {
   const grouped = {};
   data.forEach(r => {
-    const key = r["نام قطعه"] || "نامشخص";
-    grouped[key] = (grouped[key] || 0) + (parseFloat(r["میزان انحراف از مصرف ابزار"]) || 0);
+    const key = r["تاریخ"] || "نامشخص";
+    if (!grouped[key]) {
+      grouped[key] = { req: 0, del: 0, dev: 0 };
+    }
+    grouped[key].req += parseFloat(r["مقدار ابزار مورد نیاز"] || 0);
+    grouped[key].del += parseFloat(r["تعداد ابزار تحویلی به اپراتور"] || 0);
+    grouped[key].dev += parseFloat(r["میزان انحراف از مصرف ابزار"] || 0);
   });
 
-  const labels = Object.keys(grouped);
-  const values = Object.values(grouped);
+  const dates = Object.keys(grouped).sort();
+  let cumReq = 0, cumDel = 0, cumDev = 0;
+  const reqVals = [], delVals = [], devVals = [];
 
-  if (chart1Obj) chart1Obj.destroy();
-  const ctx = document.getElementById('chart1').getContext('2d');
-  chart1Obj = new Chart(ctx, {
-    type: 'bar',
+  dates.forEach(d => {
+    cumReq += grouped[d].req;
+    cumDel += grouped[d].del;
+    cumDev += grouped[d].dev;
+    reqVals.push(parseFloat(cumReq.toFixed(5)));
+    delVals.push(parseFloat(cumDel.toFixed(5)));
+    devVals.push(parseFloat(cumDev.toFixed(5)));
+  });
+
+  if (chartCumObj) chartCumObj.destroy();
+  const ctx = document.getElementById('chartCumulative').getContext('2d');
+  chartCumObj = new Chart(ctx, {
+    type: 'line',
     data: {
-      labels: labels,
-      datasets: [{
-        label: 'مجموع میزان انحراف از مصرف ابزار',
-        data: values,
-        backgroundColor: values.map(v => v > 0 ? '#ef4444' : '#10b981')
-      }]
+      labels: dates,
+      datasets: [
+        { label: 'مجموع تجمعی ابزار تحویلی', data: delVals, borderColor: '#ef4444', backgroundColor: 'rgba(239, 68, 68, 0.1)', fill: true, tension: 0.2 },
+        { label: 'مجموع تجمعی ابزار مورد نیاز', data: reqVals, borderColor: '#3b82f6', backgroundColor: 'transparent', borderDash: [5, 5] },
+        { label: 'انحراف تجمعی کل', data: devVals, borderColor: '#10b981', backgroundColor: 'transparent' }
+      ]
     },
-    options: { 
-      responsive: true, 
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { labels: { font: { family: 'B Nazanin' } } }
-      },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { font: { family: 'B Nazanin' } } } },
       scales: {
         x: { ticks: { font: { family: 'Times New Roman' } } },
         y: { ticks: { font: { family: 'Times New Roman' } } }
@@ -328,7 +356,8 @@ function renderChart1(data) {
   });
 }
 
-function renderChart2(data) {
+// نمودار تحلیلی میزان انحراف بر حسب دستگاه
+function renderChartDeviations(data) {
   const grouped = {};
   data.forEach(r => {
     const dev = r["نام خط / نام دستگاه"] || "نامشخص";
@@ -336,26 +365,55 @@ function renderChart2(data) {
   });
 
   const labels = Object.keys(grouped);
-  const values = Object.values(grouped);
+  const values = Object.values(grouped).map(v => parseFloat(v.toFixed(5)));
 
-  if (chart2Obj) chart2Obj.destroy();
-  const ctx = document.getElementById('chart2').getContext('2d');
-  chart2Obj = new Chart(ctx, {
+  if (chartDevObj) chartDevObj.destroy();
+  const ctx = document.getElementById('chartDeviations').getContext('2d');
+  chartDevObj = new Chart(ctx, {
     type: 'bar',
     data: {
       labels: labels,
       datasets: [{
-        label: 'انحراف مصرف به تفکیک دستگاه (قرمز: پرمصرف، سبز: کم‌مصرف)',
+        label: 'میزان انحراف مصرف به تفکیک دستگاه (تا ۵ رقم اعشار)',
         data: values,
-        backgroundColor: values.map(v => v > 0 ? '#dc2626' : '#16a34a')
+        backgroundColor: values.map(v => v > 0 ? '#ef4444' : '#10b981')
       }]
     },
-    options: { 
-      responsive: true, 
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { labels: { font: { family: 'B Nazanin' } } }
-      },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { font: { family: 'B Nazanin' } } } },
+      scales: {
+        x: { ticks: { font: { family: 'Times New Roman' } } },
+        y: { ticks: { font: { family: 'Times New Roman' } } }
+      }
+    }
+  });
+}
+
+// نمودار تحلیلی شکسته شدن ابزار و بدهکاری اپراتور
+function renderChartBreakage(data) {
+  const broken = {}, debt = {};
+  data.forEach(r => {
+    const dev = r["نام خط / نام دستگاه"] || "نامشخص";
+    broken[dev] = (broken[dev] || 0) + (parseFloat(r["تعداد ابزار شکسته شده"]) || 0);
+    debt[dev] = (debt[dev] || 0) + (parseFloat(r["تعداد ابزار بدهکاری اپراتور"]) || 0);
+  });
+
+  const labels = Object.keys(broken);
+  if (chartBrkObj) chartBrkObj.destroy();
+  const ctx = document.getElementById('chartBreakage').getContext('2d');
+  chartBrkObj = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [
+        { label: 'تعداد ابزار شکسته شده', data: labels.map(l => parseFloat(broken[l].toFixed(5))), backgroundColor: '#f97316' },
+        { label: 'بدهکاری ابزار اپراتور', data: labels.map(l => parseFloat(debt[l].toFixed(5))), backgroundColor: '#6366f1' }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { font: { family: 'B Nazanin' } } } },
       scales: {
         x: { ticks: { font: { family: 'Times New Roman' } } },
         y: { ticks: { font: { family: 'Times New Roman' } } }
@@ -367,19 +425,20 @@ function renderChart2(data) {
 function renderTable(data) {
   const tbody = document.getElementById('table-body');
   tbody.innerHTML = '';
-  data.slice(0, 100).forEach(r => {
+  data.slice(0, 150).forEach(r => {
     const tr = document.createElement('tr');
+    const devVal = parseFloat(r["میزان انحراف از مصرف ابزار"] || 0);
     tr.innerHTML = `
       <td class="num-en">${r["تاریخ"] || ''}</td>
       <td style="font-family: 'B Nazanin';">${r["نام قطعه"] || ''}</td>
       <td style="font-family: 'Times New Roman';">${r["مشخصات ابزار مصرفی"] || ''}</td>
       <td style="font-family: 'B Nazanin';">${r["نام خط / نام دستگاه"] || ''}</td>
       <td style="font-family: 'B Nazanin';">${r["نام اپراتور"] || ''}</td>
-      <td class="num-en">${r["مقدار برنامه تولید"] || 0}</td>
-      <td class="num-en">${r["مقدار ابزار مورد نیاز"] || 0}</td>
-      <td class="num-en">${r["تعداد ابزار تحویلی به اپراتور"] || 0}</td>
-      <td class="num-en">${r["تعداد ابزار برگشت شده به ابزارسازی"] || 0}</td>
-      <td class="num-en" style="color: ${(parseFloat(r["میزان انحراف از مصرف ابزار"])||0) > 0 ? '#ef4444' : '#10b981'}">${r["میزان انحراف از مصرف ابزار"] || 0}</td>
+      <td class="num-en">${format5(r["مقدار برنامه تولید"])}</td>
+      <td class="num-en">${format5(r["مقدار ابزار مورد نیاز"])}</td>
+      <td class="num-en">${format5(r["تعداد ابزار تحویلی به اپراتور"])}</td>
+      <td class="num-en">${format5(r["تعداد ابزار برگشت شده به ابزارسازی"])}</td>
+      <td class="num-en" style="color: ${devVal > 0 ? '#ef4444' : '#10b981'}">${format5(devVal)}</td>
     `;
     tbody.appendChild(tr);
   });
