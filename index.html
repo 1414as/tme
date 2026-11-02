@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>داشبورد مدیریت مصرف ابزار</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+@font-face {
+  font-family: 'B Nazanin';
+  src: local('B Nazanin'), local('BNazanin');
+  unicode-range: U+0600-06FF, U+FB50-FDFF, U+FE70-FEFF;
+}
+@font-face {
+  font-family: 'Times New Roman';
+  src: local('Times New Roman');
+  unicode-range: U+0000-007F, U+0080-024F;
+}
+
+:root {
+  --bg-color: #f4f6f9;
+  --card-bg: #ffffff;
+  --text-main: #0a192f;
+  --text-muted: #556987;
+  --border-color: #e2e8f0;
+  --header-bg: linear-gradient(135deg, #0a192f 0%, #1e3a8a 100%);
+  --header-text: #ffffff;
+  --table-header: #0a192f;
+  --shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="dark"] {
+  --bg-color: #0f172a;
+  --card-bg: #1e293b;
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --border-color: #334155;
+  --header-bg: linear-gradient(135deg, #020617 0%, #0f172a 100%);
+  --header-text: #38bdf8;
+  --table-header: #020617;
+  --shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'B Nazanin', 'Times New Roman', Tahoma, sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-main);
+  transition: background-color 0.3s, color 0.3s;
+  padding-bottom: 40px;
+}
+
+.header {
+  background: var(--header-bg);
+  color: var(--header-text);
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+}
+.header-logo {
+  height: 55px; width: auto; object-fit: contain;
+  background: rgba(255,255,255,0.95); padding: 4px 8px; border-radius: 8px;
+}
+.header-title { text-align: center; flex: 1; }
+.header-title h1 { font-size: 1.6rem; font-weight: bold; margin-bottom: 4px; font-family: 'B Nazanin'; }
+.header-title p { font-size: 0.9rem; opacity: 0.9; font-family: 'B Nazanin'; }
+
+.theme-toggle {
+  background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3);
+  color: #fff; padding: 8px 16px; border-radius: 20px; cursor: pointer;
+  font-family: 'B Nazanin'; font-size: 0.85rem; transition: all 0.2s;
+}
+.theme-toggle:hover { background: rgba(255,255,255,0.3); }
+
+.container { max-width: 1400px; margin: 20px auto; padding: 0 16px; }
+
+.filters-card {
+  background: var(--card-bg); border: 1px solid var(--border-color);
+  border-radius: 12px; padding: 18px; margin-bottom: 24px; box-shadow: var(--shadow);
+}
+.filters-card h3 { font-size: 1.1rem; margin-bottom: 12px; color: var(--text-main); font-family: 'B Nazanin'; }
+.filters-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px;
+}
+.filter-group { display: flex; flex-direction: column; gap: 4px; }
+.filter-group label { font-size: 0.85rem; font-weight: bold; color: var(--text-muted); font-family: 'B Nazanin'; }
+.filter-group select {
+  padding: 8px; border: 1px solid var(--border-color); border-radius: 6px;
+  background-color: var(--card-bg); color: var(--text-main); font-family: 'Times New Roman', 'B Nazanin';
+}
+.filter-group select[multiple] { height: 80px; }
+
+.charts-grid { display: grid; grid-template-columns: 1fr; gap: 24px; margin-bottom: 24px; }
+
+.chart-card {
+  background: var(--card-bg); border: 1px solid var(--border-color);
+  border-radius: 12px; padding: 20px; box-shadow: var(--shadow);
+}
+.chart-card h4 {
+  font-size: 1.05rem; margin-bottom: 14px; text-align: center;
+  border-bottom: 2px solid var(--border-color); padding-bottom: 8px; font-family: 'B Nazanin';
+}
+.chart-container { position: relative; height: 380px; width: 100%; }
+
+.table-section {
+  background: var(--card-bg); border: 1px solid var(--border-color);
+  border-radius: 12px; padding: 20px; box-shadow: var(--shadow); overflow-x: auto;
+}
+.data-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.data-table th { background: var(--table-header); color: #fff; padding: 10px; text-align: right; font-family: 'B Nazanin'; }
+.data-table td { padding: 8px; border-bottom: 1px solid var(--border-color); }
+.num-en { font-family: 'Times New Roman', monospace; direction: ltr; text-align: right; }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <img src="pn.webp" alt="لوگو پویانوین قطعه جی" class="header-logo">
+  <div class="header-title">
+    <h1>داشبورد مدیریت مصرف ابزار</h1>
+    <p>شرکت پویانوین قطعه جی — پایاذوب کاوه</p>
+  </div>
+  <button class="theme-toggle" id="themeBtn">🌙 حالت شب / روز</button>
+  <img src="ez.webp" alt="لوگو عظام" class="header-logo" style="margin-right: 12px;">
+</header>
+
+<div class="container">
+  <div class="filters-card">
+    <h3>🔍 فیلترهای تعاملی و پویای داشبورد</h3>
+    <div class="filters-grid">
+      <div class="filter-group">
+        <label>فیلتر ماه (yyyy/mm)</label>
+        <select id="f-month" multiple></select>
+      </div>
+      <div class="filter-group">
+        <label>تاریخ روزانه (چندانتخابی)</label>
+        <select id="f-date" multiple></select>
+      </div>
+      <div class="filter-group">
+        <label>نام قطعه</label>
+        <select id="f-part"><option value="">همه</option></select>
+      </div>
+      <div class="filter-group">
+        <label>کد انبار</label>
+        <select id="f-warehouse"><option value="">همه</option></select>
+      </div>
+      <div class="filter-group">
+        <label>نام خط / نام دستگاه</label>
+        <select id="f-device"><option value="">همه</option></select>
+      </div>
+      <div class="filter-group">
+        <label>نام اپراتور</label>
+        <select id="f-operator"><option value="">همه</option></select>
+      </div>
+      <div class="filter-group">
+        <label>زمان شیفت</label>
+        <select id="f-shift"><option value="">همه</option></select>
+      </div>
+    </div>
+  </div>
+
+  <div class="charts-grid">
+    <div class="chart-card">
+      <h4>۱) نمودار میزان انحراف از مصرف ابزار بر اساس نوع قطعه و اپراتور</h4>
+      <div class="chart-container"><canvas id="chart1"></canvas></div>
+    </div>
+  </div>
+
+  <div class="charts-grid">
+    <div class="chart-card">
+      <h4>۲) میزان انحراف از مصرف ابزار بر اساس خط/دستگاه (طیف پرمصرف به کم‌مصرف)</h4>
+      <div class="chart-container"><canvas id="chart2"></canvas></div>
+    </div>
+  </div>
+
+  <div class="table-section">
+    <h4 style="margin-bottom: 12px; font-family: 'B Nazanin';">📋 ریز داده‌های پایش مصرف و انحراف ابزار</h4>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>تاریخ</th>
+          <th>نام قطعه</th>
+          <th>مشخصات ابزار مصرفی</th>
+          <th>نام خط / نام دستگاه</th>
+          <th>نام اپراتور</th>
+          <th>مقدار برنامه تولید</th>
+          <th>مقدار ابزار مورد نیاز</th>
+          <th>تعداد ابزار تحویلی به اپراتور</th>
+          <th>تعداد ابزار برگشت شده به ابزارسازی</th>
+          <th>میزان انحراف از مصرف ابزار</th>
+        </tr>
+      </thead>
+      <tbody id="table-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+let rawData = [];
+let chart1Obj = null, chart2Obj = null;
+
+document.getElementById('themeBtn').addEventListener('click', () => {
+  const current = document.documentElement.getAttribute('data-theme');
+  const next = current === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  updateChartsTheme();
+});
+
+function updateChartsTheme() {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const textColor = isDark ? '#f8fafc' : '#0a192f';
+  [chart1Obj, chart2Obj].forEach(c => {
+    if (c) {
+      c.options.scales.x.ticks.color = textColor;
+      c.options.scales.y.ticks.color = textColor;
+      c.options.plugins.legend.labels.color = textColor;
+      c.update();
+    }
+  });
+}
+
+async function initDashboard() {
+  try {
+    const res = await fetch('data.json?t=' + Date.now());
+    rawData = await res.json();
+    setupFilters();
+    applyFilters();
+  } catch(e) {
+    console.error("خطا در دریافت data.json", e);
+  }
+}
+
+function setupFilters() {
+  const months = [...new Set(rawData.map(r => r["تاریخ"] ? r["تاریخ"].substring(0, 7) : ''))].filter(Boolean).sort();
+  const dates = [...new Set(rawData.map(r => r["تاریخ"]))].filter(Boolean).sort();
+  const parts = [...new Set(rawData.map(r => r["نام قطعه"]))].filter(Boolean);
+  const warehouses = [...new Set(rawData.map(r => r["کد انبار"]))].filter(Boolean);
+  const devices = [...new Set(rawData.map(r => r["نام خط / نام دستگاه"]))].filter(Boolean);
+  const operators = [...new Set(rawData.map(r => r["نام اپراتور"]))].filter(Boolean);
+
+  fillSelect('f-month', months);
+  fillSelect('f-date', dates);
+  fillSelect('f-part', parts);
+  fillSelect('f-warehouse', warehouses);
+  fillSelect('f-device', devices);
+  fillSelect('f-operator', operators);
+  fillSelect('f-shift', ['A', 'B', 'C']);
+
+  document.querySelectorAll('.filters-grid select').forEach(el => {
+    el.addEventListener('change', applyFilters);
+  });
+}
+
+function fillSelect(id, list) {
+  const s = document.getElementById(id);
+  list.forEach(v => {
+    const opt = document.createElement('option');
+    opt.value = v; opt.textContent = v;
+    s.appendChild(opt);
+  });
+}
+
+function getSelectedValues(id) {
+  const s = document.getElementById(id);
+  return Array.from(s.selectedOptions).map(o => o.value).filter(Boolean);
+}
+
+function applyFilters() {
+  const selMonths = getSelectedValues('f-month');
+  const selDates = getSelectedValues('f-date');
+  const part = document.getElementById('f-part').value;
+  const warehouse = document.getElementById('f-warehouse').value;
+  const device = document.getElementById('f-device').value;
+  const operator = document.getElementById('f-operator').value;
+  const shift = document.getElementById('f-shift').value;
+
+  const filtered = rawData.filter(r => {
+    if (selMonths.length && !selMonths.includes(r["تاریخ"].substring(0, 7))) return false;
+    if (selDates.length && !selDates.includes(r["تاریخ"])) return false;
+    if (part && r["نام قطعه"] !== part) return false;
+    if (warehouse && String(r["کد انبار"]) !== warehouse) return false;
+    if (device && r["نام خط / نام دستگاه"] !== device) return false;
+    if (operator && r["نام اپراتور"] !== operator) return false;
+    if (shift && r["زمان شیفت"] !== shift) return false;
+    return true;
+  });
+
+  renderChart1(filtered);
+  renderChart2(filtered);
+  renderTable(filtered);
+}
+
+function renderChart1(data) {
+  const grouped = {};
+  data.forEach(r => {
+    const key = r["نام قطعه"] || "نامشخص";
+    grouped[key] = (grouped[key] || 0) + (parseFloat(r["میزان انحراف از مصرف ابزار"]) || 0);
+  });
+
+  const labels = Object.keys(grouped);
+  const values = Object.values(grouped);
+
+  if (chart1Obj) chart1Obj.destroy();
+  const ctx = document.getElementById('chart1').getContext('2d');
+  chart1Obj = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'مجموع میزان انحراف از مصرف ابزار',
+        data: values,
+        backgroundColor: values.map(v => v > 0 ? '#ef4444' : '#10b981')
+      }]
+    },
+    options: { 
+      responsive: true, 
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { font: { family: 'B Nazanin' } } }
+      },
+      scales: {
+        x: { ticks: { font: { family: 'Times New Roman' } } },
+        y: { ticks: { font: { family: 'Times New Roman' } } }
+      }
+    }
+  });
+}
+
+function renderChart2(data) {
+  const grouped = {};
+  data.forEach(r => {
+    const dev = r["نام خط / نام دستگاه"] || "نامشخص";
+    grouped[dev] = (grouped[dev] || 0) + (parseFloat(r["میزان انحراف از مصرف ابزار"]) || 0);
+  });
+
+  const labels = Object.keys(grouped);
+  const values = Object.values(grouped);
+
+  if (chart2Obj) chart2Obj.destroy();
+  const ctx = document.getElementById('chart2').getContext('2d');
+  chart2Obj = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'انحراف مصرف به تفکیک دستگاه (قرمز: پرمصرف، سبز: کم‌مصرف)',
+        data: values,
+        backgroundColor: values.map(v => v > 0 ? '#dc2626' : '#16a34a')
+      }]
+    },
+    options: { 
+      responsive: true, 
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { font: { family: 'B Nazanin' } } }
+      },
+      scales: {
+        x: { ticks: { font: { family: 'Times New Roman' } } },
+        y: { ticks: { font: { family: 'Times New Roman' } } }
+      }
+    }
+  });
+}
+
+function renderTable(data) {
+  const tbody = document.getElementById('table-body');
+  tbody.innerHTML = '';
+  data.slice(0, 100).forEach(r => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="num-en">${r["تاریخ"] || ''}</td>
+      <td style="font-family: 'B Nazanin';">${r["نام قطعه"] || ''}</td>
+      <td style="font-family: 'Times New Roman';">${r["مشخصات ابزار مصرفی"] || ''}</td>
+      <td style="font-family: 'B Nazanin';">${r["نام خط / نام دستگاه"] || ''}</td>
+      <td style="font-family: 'B Nazanin';">${r["نام اپراتور"] || ''}</td>
+      <td class="num-en">${r["مقدار برنامه تولید"] || 0}</td>
+      <td class="num-en">${r["مقدار ابزار مورد نیاز"] || 0}</td>
+      <td class="num-en">${r["تعداد ابزار تحویلی به اپراتور"] || 0}</td>
+      <td class="num-en">${r["تعداد ابزار برگشت شده به ابزارسازی"] || 0}</td>
+      <td class="num-en" style="color: ${(parseFloat(r["میزان انحراف از مصرف ابزار"])||0) > 0 ? '#ef4444' : '#10b981'}">${r["میزان انحراف از مصرف ابزار"] || 0}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+window.onload = initDashboard;
+</script>
+</body>
+</html>
